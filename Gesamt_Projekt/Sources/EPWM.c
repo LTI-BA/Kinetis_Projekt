@@ -6,6 +6,142 @@
  */
 
 #include "MK22F51212.h"
+#include "mcu_tracer.h"
+
+//Set up protection functions
+//required write enable.
+void FTM_protect_init(){
+
+	//Clock to the comparator
+	SIM->SCGC4|=SIM_SCGC4_CMP_MASK;
+	SIM->SCGC5|=SIM_SCGC5_PORTC_MASK; ////////////////////
+
+	// Init Overcurrent protection
+
+	// for the positive input of the CMP0, the IN1 is used (PTC7)
+	///////////////////////// THIS SHOULD NOT BE NECESSARY
+	// PORTC->PCR[7]= PORT_PCR_MUX(0);
+
+	// Enable the comparator
+	CMP0->CR1=CMP_CR1_EN_MASK;
+
+	CMP0->CR0=CMP_CR0_FILTER_CNT(7);
+	// Enable DAC, VIn1, Voltage 19/60*Vref
+	// For the test, a max current of 1A is used
+	// ==> U_shunt_max = 0,1 x 1  = 0,1V
+	// the signal is amplified with the OP (8x)
+	// so the maximum voltage is 0,8V which is routed to the INP1 of CMP0
+	// the OR Function realized with the diodes reduces the voltage coming to INP1 pin by approximately 0,45 V
+	// So the maximum voltage to compare to the DAC Reference is : 0,8V - 0,45V = 0,35 V
+	// VIn1 = V_ref = 1.2113 V
+	// Voltage (19/64) *Vref = 0,3596 V
+
+	CMP0->DACCR=CMP_DACCR_DACEN(1)|CMP_DACCR_VRSEL(0)|CMP_DACCR_VOSEL(18);
+	CMP0->MUXCR=CMP_MUXCR_PSEL(1)|CMP_MUXCR_MSEL(7); //+=Sense -=DAC
+
+
+
+
+	// Init Overvoltage protection
+	// config port
+	// for the positive input of the CMP0, the IN1 is used (PTC3)
+	///////////////////////// THIS SHOULD NOT BE NECESSARY
+	// PORTC->PCR[3]= PORT_PCR_MUX(0);
+
+	// Enable the comparator
+	CMP1->CR1=CMP_CR1_EN_MASK;
+	// Set filter to react after 7 consequent samples
+	CMP1->CR0=CMP_CR0_FILTER_CNT(7);
+
+
+	//Overvoltage Level Calculation:
+	//(0.5+Value)*17V
+	//800V: 47
+
+	// Enable DAC, VIn1, Voltage 40/60*Vref
+	// For the test, a max output voltage of is 40V :
+	// Passing through the voltage divider it becomes:
+	// 40 x 7,5 / (1000 + 7,5) = 0,298 V
+	// the OR Function realized with the diodes reduces the voltage coming to INP1 pin by approximately 0,45 V
+	// So the maximum voltage to compare to the DAC Reference is : V = 0,35 V
+	// VIn1 = V_ref = 1.2113 V
+	// Voltage (19/64) *Vref = 0,3596 V
+
+	// For the test, a voltage of 0,8V is applied directly to the CMP1_IN1
+	// The OR function realized by the Schottky diodes is bypassed to avoid applying high voltages to the output during the tests
+	// VIn1 = V_ref = 1.2113 V
+	// Voltage (40/64) *Vref = 0,757 V
+	// So the applied voltage (0,8) should do the work !
+	CMP1->DACCR=CMP_DACCR_DACEN(1)|CMP_DACCR_VRSEL(0)|CMP_DACCR_VOSEL(39);
+
+
+	//select input source (CMP0_In1)
+	CMP1->MUXCR=CMP_MUXCR_PSEL(1)|CMP_MUXCR_MSEL(7); //+=Sense -=DAC
+
+
+
+
+	//Select comparator outputs (CMP0 out for OC Prot and CMP1 out for OV Prot) as fault source of FTM0
+	SIM->SOPT4|=(SIM_SOPT4_FTM0FLT1_MASK)|(SIM_SOPT4_FTM0FLT0_MASK);
+
+	// Fault control is enabled for all channels, and the selected mode is the manual fault clearing.
+	// write protected ==> to disable the protection: MODE[WPDIS] = 1
+	FTM0->MODE|= FTM_MODE_WPDIS_MASK | FTM_MODE_FAULTM(2);
+	// Enabling the fault input 0 and 1
+	FTM0->FLTCTRL=FTM_FLTCTRL_FAULT0EN_MASK|FTM_FLTCTRL_FAULT1EN_MASK;
+	// Enabling the fault control for all the channels  0 ==> 7
+	FTM0->COMBINE|=FTM_COMBINE_FAULTEN0_MASK|FTM_COMBINE_FAULTEN1_MASK|FTM_COMBINE_FAULTEN2_MASK|FTM_COMBINE_FAULTEN3_MASK;
+	// Clearing the Fault Detection Flag
+	FTM0->FMS&=(~FTM_FMS_FAULTF_MASK);
+}
+
+void FTM_fault_interrupt_enable(){
+	//inits the fault interrupt function
+	FTM0->MODE|=FTM_MODE_FAULTIE_MASK;
+	NVIC_EnableIRQ(FTM0_IRQn);
+}
+
+void FTM0_IRQHandler(void){
+	FTM0->MODE&=~FTM_MODE_FAULTIE_MASK;
+	//CMP0 works on Overcurrent
+	if(FTM0->FMS & FTM_FMS_FAULTF0_MASK){
+		mcu_tracer_msg("Overcurrent detected. PWM off.");
+	}else if(FTM0->FMS & FTM_FMS_FAULTF1_MASK){
+		mcu_tracer_msg("Overvoltage detected. PWM off.");
+	}else{
+		mcu_tracer_msg("OverX: Unknown error. Fix me!");
+	}
+}
+
+void FTM_clear_error(void){
+	//Clears overcurrent error (follow description in FAULTF Field on page 920)
+	// reading the FMS register
+	uint32_t fms=FTM0->FMS;
+	// Check if there is a fault detected
+	if(!(fms & FTM_FMS_FAULTIN_MASK)){
+		// resetting the FAULTF bit in fms variable
+		fms&=(~FTM_FMS_FAULTF_MASK);
+		// copying the fms variable to FMS register
+		FTM0->FMS=fms;
+		//Enable Interrupts
+		FTM_fault_interrupt_enable();
+		mcu_tracer_msg("OverX: Errors reseted.");
+	}else{
+		mcu_tracer_msg("OverX: Error still persistend. Cannot reset.");
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 // Setting the duty cycle of the EPWM , a = 0..100   (%)
@@ -140,6 +276,12 @@ void PWM_init(void) {
 	FTM0_FMS &= ~FTM_FMS_WPEN_MASK ;
 	// FTM enable and Write protection disabled , to be able to write in FTMx_CnSC and FTMx_SC and other registers
 	FTM0_MODE |= FTM_MODE_WPDIS_MASK | FTM_MODE_FTMEN_MASK ;
+
+
+	// FTM Protection function
+	FTM_protect_init();
+
+
 	// Edge Aligned PWM low-true pulses (set Output on match)
 	FTM0_C0SC= (FTM_CnSC_MSB(1) | FTM_CnSC_MSA(0) | FTM_CnSC_ELSB(0) | FTM_CnSC_ELSA(1) );
 	FTM0_C1SC= (FTM_CnSC_MSB(1) | FTM_CnSC_MSA(0) | FTM_CnSC_ELSB(0) | FTM_CnSC_ELSA(1) );
@@ -192,6 +334,8 @@ void PWM_init(void) {
 
 	// PWM Synchronization mode : no restrictions
 	 FTM0_MODE &= ~FTM_MODE_PWMSYNC_MASK ;
+
+	 FTM_fault_interrupt_enable();
 
 
 }

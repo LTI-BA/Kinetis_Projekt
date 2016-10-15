@@ -109,7 +109,6 @@ for (;;) {
  current[3] = cur[3] * 10 / 8 ;
 
 
-
  // Voltage values:
  voltage[0] = vol[0] * 1007.5 / 7.5 ;
  voltage[1] = vol[1] * 1007.5 / 7.5 ;
