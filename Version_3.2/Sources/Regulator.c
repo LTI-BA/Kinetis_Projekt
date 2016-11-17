@@ -3,6 +3,7 @@
  *
  *  Created on: 24.10.2016
  *      Author: Lanwer
+ * based on : https://nicisdigital.wordpress.com/2011/06/27/proportional-integral-derivative-pid-controller/
  */
 #include "Regulator.h"
 #include "EPWM.h"
