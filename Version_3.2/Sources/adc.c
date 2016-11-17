@@ -1,13 +1,19 @@
+/*
+ * adc.c
+ *
+ *      Author: Lanwer
+ *  based on: "ADC example in Kinetis Design Studio (KDS) with FDRM-K64f" By Paul Garate & Augusto Panecatl
+ */
 #include "MK22F51212.h"
 #include "VREF.h"
 #include "adc.h"
 
 //The calibration function sets the offset calibration value, the minus-side calibration values, and the plus-side calibration values.
 /* For best calibration results: (See page 795 of the reference manual)
- • Set hardware averaging to maximum, that is, SC3[AVGE]=1 and SC3[AVGS]=11 for an average of 32
- • Set ADC clock frequency fADCK less than or equal to 4 MHz
- • VREFH=VDDA
- • Calibrate at nominal voltage and temperature
+ â€¢ Set hardware averaging to maximum, that is, SC3[AVGE]=1 and SC3[AVGS]=11 for an average of 32
+ â€¢ Set ADC clock frequency fADCK less than or equal to 4 MHz
+ â€¢ VREFH=VDDA
+ â€¢ Calibrate at nominal voltage and temperature
  return 1 if failed ==> ADC accuracy specifications are not guaranteed, otherweise return 0 */
 int ADC_calibrate(void) {
 
