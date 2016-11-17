@@ -3,6 +3,7 @@
  *
  *  Created on: 06.07.2016
  *      Author: Lanwer
+ *  based on: AN5142, "Features of the FlexTimer Module"
  */
 
 #include "MK22F51212.h"
@@ -198,7 +199,7 @@ void PWM_deadtime_enable(void) {
 			| FTM_COMBINE_DTEN2_MASK | FTM_COMBINE_DTEN3_MASK;
 }
 
-// Divide the system clock by 1 (deadtime prescaler) and Deadtime value : Deadtime insert value = (DTPS × DTVAL).  (Maximaler wert = 63)
+// Divide the system clock by 1 (deadtime prescaler) and Deadtime value : Deadtime insert value = (DTPS Ã— DTVAL).  (Maximaler wert = 63)
 void PWM_set_deadtime(int b, int c) { // b: deadtime prescaler value b= 0..3  ;  c: Deadtime Value c= 0..63 ;
 	FTM0_DEADTIME = FTM_DEADTIME_DTPS(b) | FTM_DEADTIME_DTVAL(c);
 }
@@ -296,7 +297,7 @@ void PWM_init(void) {
 	// Enables the deadtime insertion in the channels (n) and (n+1).
 	PWM_deadtime_enable();
 
-	// Deadtime calculation [s]= (DTPS × DTVAL) / (60 Mhz)
+	// Deadtime calculation [s]= (DTPS Ã— DTVAL) / (60 Mhz)
 	// a: deadtime prescaler value DTPS:  b= 0..3 ( see p. 914 for the prescaler values); 0 or 1 means devide by 1; 2 means devide by 4 ; 3 means devide by 16 ;
 	// b: Deadtime Value c= 0..63 ;
 	// Example : for DTPS = 2  (means 4) and DTVAL = 3 ==> Deadtime [s] = (4 * 3) / 60 Mhz = 200 ns
