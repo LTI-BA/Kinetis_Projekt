@@ -3,6 +3,7 @@
  *
  *  Created on: 23.07.2016
  *      Author: Lanwer
+ *  based on: AN4590, Using DMA to Emulate ADC Flexible Scan Mode on Kinetis K Series 
  */
 
 #include "dma.h"
@@ -34,7 +35,7 @@ void DMA_init(void) {
 
 // Configuring the DMA Channels 6 and 7 for the current values coming from ADC1
 
-//**** Setting the CHCGF register to 0, to start the configuration of the channel
+        //**** Setting the CHCGF register to 0, to start the configuration of the channel
 	DMAMUX_CHCFG6 = 0;
 
 	//**** Source address, constant buffer in SRAM
