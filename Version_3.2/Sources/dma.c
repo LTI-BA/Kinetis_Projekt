@@ -3,7 +3,7 @@
  *
  *  Created on: 23.07.2016
  *      Author: Lanwer
- *  based on: AN4590, Using DMA to Emulate ADC Flexible Scan Mode on Kinetis K Series 
+ *  based on: AN4590, "Using DMA to Emulate ADC Flexible Scan Mode on Kinetis K Series"
  */
 
 #include "dma.h"
